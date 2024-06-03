@@ -1,11 +1,10 @@
-﻿using System;
+﻿using Newtonsoft.Json;
 using System.Collections.Generic;
-using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
     [Info("Seedless Food", "VisEntities", "1.0.0")]
-    [Description("Automatically removes seeds from your inventory when you eat fruits or vegetables.")]
+    [Description("Removes seeds from players' inventories when they eat fruits or vegetables.")]
 
     public class SeedlessFood : RustPlugin
     {
@@ -26,6 +25,7 @@ namespace Oxide.Plugins
             [JsonProperty("Food Item Shortnames")]
             public List<string> FoodItemShortnames { get; set; }
         }
+
         protected override void LoadConfig()
         {
             base.LoadConfig();
@@ -115,7 +115,7 @@ namespace Oxide.Plugins
 
         #endregion Oxide Hooks
 
-        #region Functions
+        #region Seeds Removal
 
         private void RemoveSeedItemsFromPlayer(string seedShortname, BasePlayer player)
         {
@@ -130,6 +130,6 @@ namespace Oxide.Plugins
             }
         }
 
-        #endregion Functions
+        #endregion Seeds Removal
     }
 }
