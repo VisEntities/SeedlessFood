@@ -1,9 +1,16 @@
-﻿using Newtonsoft.Json;
+﻿/*
+ * Copyright (C) 2024 Game4Freak.io
+ * This mod is provided under the Game4Freak EULA.
+ * Full legal terms can be found at https://game4freak.io/eula/
+ */
+
+using Facepunch;
+using Newtonsoft.Json;
 using System.Collections.Generic;
 
 namespace Oxide.Plugins
 {
-    [Info("Seedless Food", "VisEntities", "1.0.0")]
+    [Info("Seedless Food", "VisEntities", "1.0.1")]
     [Description("Removes seeds from players' inventories when they eat fruits or vegetables.")]
 
     public class SeedlessFood : RustPlugin
@@ -22,8 +29,8 @@ namespace Oxide.Plugins
             [JsonProperty("Version")]
             public string Version { get; set; }
 
-            [JsonProperty("Food Item Shortnames")]
-            public List<string> FoodItemShortnames { get; set; }
+            [JsonProperty("Food Item Short Names")]
+            public List<string> FoodItemShortNames { get; set; }
         }
 
         protected override void LoadConfig()
@@ -65,7 +72,7 @@ namespace Oxide.Plugins
             return new Configuration
             {
                 Version = Version.ToString(),
-                FoodItemShortnames = new List<string>
+                FoodItemShortNames = new List<string>
                 {
                     "pumpkin",
                     "corn",
@@ -102,12 +109,12 @@ namespace Oxide.Plugins
 
             if (action == "consume")
             {
-                if (_config.FoodItemShortnames.Contains(item.info.shortname))
+                if (_config.FoodItemShortNames.Contains(item.info.shortname))
                 {
-                    string seedShortname = "seed." + item.info.shortname;
+                    string seedShortName = "seed." + item.info.shortname;
                     NextTick(() =>
                     {
-                        RemoveSeedItemsFromPlayer(seedShortname, player);
+                        RemoveSeedItemsFromPlayer(seedShortName, player);
                     });
                 }
             }
@@ -117,17 +124,21 @@ namespace Oxide.Plugins
 
         #region Seeds Removal
 
-        private void RemoveSeedItemsFromPlayer(string seedShortname, BasePlayer player)
+        private void RemoveSeedItemsFromPlayer(string seedShortName, BasePlayer player)
         {
-            Item[] allItems = player.inventory.AllItems();
+            List<Item> allItems = Pool.Get<List<Item>>();
+            player.inventory.GetAllItems(allItems);
+
             foreach (Item seed in allItems)
             {
-                if (seed.info.shortname == seedShortname)
+                if (seed.info.shortname == seedShortName)
                 {
                     seed.Remove();
                     break;
                 }
             }
+
+            Pool.FreeUnmanaged(ref allItems);
         }
 
         #endregion Seeds Removal
