@@ -1,17 +1,16 @@
-﻿/*
+/*
  * Copyright (C) 2024 Game4Freak.io
  * This mod is provided under the Game4Freak EULA.
  * Full legal terms can be found at https://game4freak.io/eula/
  */
 
-using Facepunch;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 
 namespace Oxide.Plugins
 {
-    [Info("Seedless Food", "VisEntities", "1.0.1")]
-    [Description("Removes seeds from players' inventories when they eat fruits or vegetables.")]
+    [Info("Seedless Food", "VisEntities", "1.0.2")]
+    [Description("Prevents seeds from being produced when players eat fruits or vegetables.")]
 
     public class SeedlessFood : RustPlugin
     {
@@ -19,6 +18,7 @@ namespace Oxide.Plugins
 
         private static SeedlessFood _plugin;
         private static Configuration _config;
+        private HashSet<ulong> _playersConsuming = new HashSet<ulong>();
 
         #endregion Fields
 
@@ -29,8 +29,8 @@ namespace Oxide.Plugins
             [JsonProperty("Version")]
             public string Version { get; set; }
 
-            [JsonProperty("Food Item Short Names")]
-            public List<string> FoodItemShortNames { get; set; }
+            [JsonProperty("Block Seeds From (shortnames)")]
+            public List<string> BlockSeedsFrom { get; set; }
         }
 
         protected override void LoadConfig()
@@ -72,7 +72,7 @@ namespace Oxide.Plugins
             return new Configuration
             {
                 Version = Version.ToString(),
-                FoodItemShortNames = new List<string>
+                BlockSeedsFrom = new List<string>
                 {
                     "pumpkin",
                     "corn",
@@ -98,6 +98,7 @@ namespace Oxide.Plugins
 
         private void Unload()
         {
+            _playersConsuming?.Clear();
             _config = null;
             _plugin = null;
         }
@@ -109,38 +110,38 @@ namespace Oxide.Plugins
 
             if (action == "consume")
             {
-                if (_config.FoodItemShortNames.Contains(item.info.shortname))
+                if (_config.BlockSeedsFrom.Contains(item.info.shortname))
                 {
-                    string seedShortName = "seed." + item.info.shortname;
+                    _playersConsuming.Add(player.userID);
+
                     NextTick(() =>
                     {
-                        RemoveSeedItemsFromPlayer(seedShortName, player);
+                        _playersConsuming.Remove(player.userID);
                     });
                 }
             }
         }
 
-        #endregion Oxide Hooks
-
-        #region Seeds Removal
-
-        private void RemoveSeedItemsFromPlayer(string seedShortName, BasePlayer player)
+        private object CanAcceptItem(ItemContainer container, Item item, int targetPos)
         {
-            List<Item> allItems = Pool.Get<List<Item>>();
-            player.inventory.GetAllItems(allItems);
+            if (!item.info.shortname.StartsWith("seed."))
+                return null;
 
-            foreach (Item seed in allItems)
-            {
-                if (seed.info.shortname == seedShortName)
-                {
-                    seed.Remove();
-                    break;
-                }
-            }
+            BasePlayer player = container.GetOwnerPlayer();
+            if (player == null)
+                return null;
 
-            Pool.FreeUnmanaged(ref allItems);
+            if (!_playersConsuming.Contains(player.userID))
+                return null;
+
+            string foodName = item.info.shortname.Substring(5);
+            if (!_config.BlockSeedsFrom.Contains(foodName))
+                return null;
+
+            item.Remove();
+            return ItemContainer.CanAcceptResult.CannotAccept;
         }
 
-        #endregion Seeds Removal
+        #endregion Oxide Hooks
     }
 }
